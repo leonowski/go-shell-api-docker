@@ -1,7 +1,7 @@
 A utility to expose shell commands through a web API.  Copied from:
 http://techfeast-hiranya.blogspot.com/2015/06/expose-any-shell-command-or-script-as.html
 
-# Building locally:
+# Building locally
 
 Requirements:
 golang
@@ -10,9 +10,16 @@ golang
 
 # Dockerfile for automated builds for common platforms
 
+Building in Docker
+`docker build whatever-you-want-to-call-this-thing .`
+
 After building, just copy the bins in /go-shell-api-bins.  Example:
 
-`docker run -v "$(pwd)":/temp --rm -it noel-go-shell-test sh -c "cp -R /go-shell-api-bins/* /temp/"`
+`docker run -v "$(pwd)":/temp --rm -it whatever-you-want-call-this-thing sh -c "cp -R /go-shell-api-bins/* /temp/"`
+
+Pre-made container available on Dockerhub:
+
+leonowski/go-shell-api-docker
 
 # Running
 
