@@ -1,2 +1,2 @@
 #!/bin/bash
-docker run -v "$(pwd)":/temp --rm -it noel-go-shell-test sh -c "cp -R /go-shell-api-bins/* /temp/"
+docker run -v "$(pwd)":/temp --entrypoint=/bin/cp --rm -it leonowski/go-shell-api-docker -R /go-shell-api-bins /temp/
