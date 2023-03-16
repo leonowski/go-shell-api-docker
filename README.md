@@ -34,3 +34,32 @@ This will expose the command ls at http://ip-address:8080
 An HTTP GET will give you the output of ls where the binary is running.  Use POST to add options to the command.  Example using curl:
 
 `curl -X POST -d "-ls" some-ip-address:8080`
+
+You can specify HTTPS and basic auth with these options:
+
+`./go-shell-api -b ls -https -u username -pw somepassword`
+
+If HTTPS is used, a self-signed cert is used.  However, a cert and key can also be specified if desired.  See full options below.
+
+Full options available with -help:
+
+```
+  -b string
+    	Path to the executable binary
+  -c string
+    	Path to the configuration file with allowed commands
+  -cert string
+    	Path to the server certificate file (requires -https flag)
+  -https
+    	Serve via HTTPS using a self-signed certificate or an optional custom certificate
+  -key string
+    	Path to the server key file (requires -https flag)
+  -l string
+    	Address to listen on (default "0.0.0.0")
+  -p int
+    	HTTP port to listen on (default 8080)
+  -pw string
+    	Basic authentication password
+  -u string
+    	Basic authentication username
+```
