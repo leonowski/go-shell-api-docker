@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
-	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -21,9 +20,7 @@ import (
 	"time"
 )
 
-type Config struct {
-	AllowedCommands []string `json:"allowed_commands"`
-}
+var allowedCommands string
 
 func generateSelfSignedCert() (tls.Certificate, error) {
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -72,7 +69,6 @@ func main() {
 	port := flag.Int("p", 8080, "HTTP port to listen on")
 	username := flag.String("u", "", "Basic authentication username")
 	password := flag.String("pw", "", "Basic authentication password")
-	configFile := flag.String("c", "", "Path to the configuration file with allowed commands")
 	useHTTPS := flag.Bool("https", false, "Serve via HTTPS using a self-signed certificate or an optional custom certificate")
 	certFile := flag.String("cert", "", "Path to the server certificate file (requires -https flag)")
 	keyFile := flag.String("key", "", "Path to the server key file (requires -https flag)")
@@ -85,19 +81,6 @@ func main() {
 	}
 
 	l := log.New(os.Stdout, "", log.Ldate|log.Ltime)
-
-	var config Config
-	if *configFile != "" {
-		data, err := ioutil.ReadFile(*configFile)
-		if err != nil {
-			l.Fatal(err)
-		}
-
-		err = json.Unmarshal(data, &config)
-		if err != nil {
-			l.Fatal(err)
-		}
-	}
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -135,14 +118,23 @@ func main() {
 		args := append(fields[1:], strings.Fields(argString)...)
 
 		command := fmt.Sprintf("%s %s", fields[0], strings.Join(args, " "))
-		if !isCommandAllowed(command, config.AllowedCommands) {
+		l.Printf("Command: [%s]", command)
+
+		if !isValidCommand(command) {
+			http.Error(w, "Invalid command.", http.StatusBadRequest)
+			return
+		}
+
+		if !isCommandAllowed(command) {
 			http.Error(w, "Command not allowed.", http.StatusForbidden)
 			return
 		}
 
+		output, err := exec.Command(fields[0], args...).Output()
+
 		l.Printf("Command: [%s]", command)
 
-		output, err := exec.Command(fields[0], args...).Output()
+		output, err = exec.Command(fields[0], args...).Output()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -180,15 +172,28 @@ func main() {
 	}
 }
 
-func isCommandAllowed(command string, allowedCommands []string) bool {
-	if len(allowedCommands) == 0 {
+func isCommandAllowed(command string) bool {
+	if allowedCommands == "" {
 		return true
 	}
 
-	for _, allowedCommand := range allowedCommands {
+	allowedCommandsSlice := strings.Split(allowedCommands, ",")
+	for _, allowedCommand := range allowedCommandsSlice {
 		if strings.HasPrefix(command, allowedCommand) {
 			return true
 		}
 	}
 	return false
+}
+
+// this is an attempt to sanitize shell commands that may cause a sort of fork bomb.
+func isValidCommand(command string) bool {
+	dangerousSequences := []string{"|", ";", "&", "$(", "`", ">/dev/null", ">/dev/random"}
+
+	for _, seq := range dangerousSequences {
+		if strings.Contains(command, seq) {
+			return false
+		}
+	}
+	return true
 }
